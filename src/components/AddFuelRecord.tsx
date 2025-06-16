@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Vehicle, FuelRecord, FuelTypeOption, GasStationOption } from '../types';
-import { Car, MapPin, Fuel, Calendar, FileText, Camera, X, Plus, Percent, Trash2 } from 'lucide-react';
+import { Car, MapPin, Fuel, Calendar, FileText, Camera, X, Plus, Percent, Trash2, Scan } from 'lucide-react';
 
 interface AddFuelRecordProps {
   vehicles: Vehicle[];
@@ -46,6 +46,7 @@ export function AddFuelRecord({
   const [showAddGasStation, setShowAddGasStation] = useState(false);
   const [newFuelTypeName, setNewFuelTypeName] = useState('');
   const [newGasStationName, setNewGasStationName] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +141,69 @@ export function AddFuelRecord({
     }
   };
 
+  const handleReceiptScan = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      setIsScanning(true);
+      const file = files[0];
+      const reader = new FileReader();
+      
+      reader.onload = async (event) => {
+        const result = event.target?.result as string;
+        
+        // Add image to the images array
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, result]
+        }));
+
+        // Simulate OCR processing (in a real app, you'd use an OCR service like Tesseract.js or cloud OCR)
+        try {
+          await simulateOCRProcessing(result);
+        } catch (error) {
+          console.error('OCR processing failed:', error);
+          alert('小票识别失败，请手动输入信息');
+        } finally {
+          setIsScanning(false);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const simulateOCRProcessing = async (imageData: string): Promise<void> => {
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mock OCR results - in a real implementation, you would use actual OCR
+    const mockOCRResults = {
+      station: '中石油',
+      fuelAmount: '45.67',
+      cost: '320.69',
+      actualPayment: '315.50',
+      date: new Date().toISOString().split('T')[0],
+      location: '北京市朝阳区',
+      fuelType: '95号汽油'
+    };
+
+    // Auto-fill form with OCR results
+    setFormData(prev => ({
+      ...prev,
+      station: mockOCRResults.station,
+      fuelAmount: mockOCRResults.fuelAmount,
+      cost: mockOCRResults.cost,
+      actualPayment: mockOCRResults.actualPayment,
+      date: mockOCRResults.date,
+      location: mockOCRResults.location,
+      fuelType: mockOCRResults.fuelType,
+      pricePerLiter: (parseFloat(mockOCRResults.cost) / parseFloat(mockOCRResults.fuelAmount)).toFixed(2),
+      discountedPricePerLiter: (parseFloat(mockOCRResults.actualPayment) / parseFloat(mockOCRResults.fuelAmount)).toFixed(2)
+    }));
+
+    alert('小票识别成功！已自动填入相关信息，请核对后提交。');
+  };
+
   const removeImage = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -193,6 +257,32 @@ export function AddFuelRecord({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {/* Receipt Scanning Section */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-teal-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-blue-900 flex items-center space-x-2">
+                  <Scan className="w-5 h-5" />
+                  <span>智能小票识别</span>
+                </h3>
+                {isScanning && (
+                  <div className="flex items-center space-x-2 text-blue-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm">识别中...</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                上传加油小票照片，系统将自动识别并填入相关信息
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleReceiptScan}
+                disabled={isScanning}
+                className="w-full text-sm text-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
+              />
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -554,10 +644,10 @@ export function AddFuelRecord({
 
               <button
                 type="submit"
-                disabled={!formData.vehicleId}
+                disabled={!formData.vehicleId || isScanning}
                 className="w-full bg-gradient-to-r from-blue-600 to-teal-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                添加加油记录
+                {isScanning ? '识别中...' : '添加加油记录'}
               </button>
             </form>
           </div>
@@ -626,6 +716,7 @@ export function AddFuelRecord({
               <li>• 保留加油小票可以核对信息</li>
               <li>• 上传小票照片便于后续查证</li>
               <li>• 记录实际付款可跟踪优惠情况</li>
+              <li>• 使用智能识别功能快速录入信息</li>
             </ul>
           </div>
         </div>

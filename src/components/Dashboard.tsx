@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Vehicle, FuelRecord, FuelTypeOption, GasStationOption } from '../types';
 import { calculateStatistics, formatCurrency } from '../utils/calculations';
-import { Fuel, TrendingUp, BarChart, Calendar, MapPin, Image, Edit2, Trash2, X, Car } from 'lucide-react';
+import { Fuel, TrendingUp, BarChart, Calendar, MapPin, Image, Edit2, Trash2, X, Car, Download, Upload } from 'lucide-react';
 
 interface DashboardProps {
   vehicles: Vehicle[];
@@ -102,6 +102,76 @@ export function Dashboard({
     setEditingRecord(null);
   };
 
+  const handleExportData = () => {
+    const exportData = {
+      vehicles,
+      fuelRecords,
+      fuelTypes,
+      gasStations,
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `fuel-tracker-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert('数据导出成功！');
+  };
+
+  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target?.result as string);
+        
+        // Validate imported data structure
+        if (!importedData.vehicles || !importedData.fuelRecords) {
+          throw new Error('Invalid data format');
+        }
+
+        // Confirm import
+        const confirmImport = confirm(
+          `确定要导入数据吗？\n` +
+          `车辆数量: ${importedData.vehicles?.length || 0}\n` +
+          `加油记录数量: ${importedData.fuelRecords?.length || 0}\n` +
+          `燃料类型数量: ${importedData.fuelTypes?.length || 0}\n` +
+          `加油站数量: ${importedData.gasStations?.length || 0}\n\n` +
+          `注意：这将覆盖当前所有数据！`
+        );
+
+        if (confirmImport) {
+          // Store imported data to localStorage
+          localStorage.setItem('fuel-tracker-vehicles', JSON.stringify(importedData.vehicles || []));
+          localStorage.setItem('fuel-tracker-records', JSON.stringify(importedData.fuelRecords || []));
+          localStorage.setItem('fuel-tracker-fuel-types', JSON.stringify(importedData.fuelTypes || []));
+          localStorage.setItem('fuel-tracker-gas-stations', JSON.stringify(importedData.gasStations || []));
+          
+          alert('数据导入成功！页面将刷新以加载新数据。');
+          window.location.reload();
+        }
+      } catch (error) {
+        alert('数据导入失败：文件格式不正确或数据损坏');
+        console.error('Import error:', error);
+      }
+    };
+    
+    reader.readAsText(file);
+    // Reset file input
+    event.target.value = '';
+  };
+
   const StatCard = ({ title, value, subtitle, icon: Icon, color }: {
     title: string;
     value: string;
@@ -132,7 +202,28 @@ export function Dashboard({
             <p className="text-gray-600 mt-1">查看您的燃油使用统计和趋势</p>
           </div>
           
-          <div className="mt-4 sm:mt-0">
+          <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-4">
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportData}
+                className="inline-flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>导出数据</span>
+              </button>
+              
+              <label className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+                <Upload className="w-4 h-4" />
+                <span>导入数据</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportData}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            
             <select
               value={selectedVehicleId}
               onChange={(e) => onVehicleChange(e.target.value)}
