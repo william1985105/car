@@ -1,16 +1,30 @@
 import React, { useState } from 'react';
-import { Vehicle, FuelRecord, FuelTypeOption } from '../types';
-import { Car, MapPin, Fuel, Calendar, FileText, Camera, X, Plus, Percent } from 'lucide-react';
+import { Vehicle, FuelRecord, FuelTypeOption, GasStationOption } from '../types';
+import { Car, MapPin, Fuel, Calendar, FileText, Camera, X, Plus, Percent, Trash2 } from 'lucide-react';
 
 interface AddFuelRecordProps {
   vehicles: Vehicle[];
   fuelRecords: FuelRecord[];
   fuelTypes: FuelTypeOption[];
+  gasStations: GasStationOption[];
   onAddRecord: (record: Omit<FuelRecord, 'id' | 'createdAt'>) => void;
   onAddFuelType: (name: string) => void;
+  onDeleteFuelType: (id: string) => void;
+  onAddGasStation: (name: string) => void;
+  onDeleteGasStation: (id: string) => void;
 }
 
-export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, onAddFuelType }: AddFuelRecordProps) {
+export function AddFuelRecord({ 
+  vehicles, 
+  fuelRecords, 
+  fuelTypes, 
+  gasStations,
+  onAddRecord, 
+  onAddFuelType, 
+  onDeleteFuelType,
+  onAddGasStation,
+  onDeleteGasStation
+}: AddFuelRecordProps) {
   const [formData, setFormData] = useState({
     vehicleId: '',
     date: new Date().toISOString().split('T')[0],
@@ -29,7 +43,9 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddFuelType, setShowAddFuelType] = useState(false);
+  const [showAddGasStation, setShowAddGasStation] = useState(false);
   const [newFuelTypeName, setNewFuelTypeName] = useState('');
+  const [newGasStationName, setNewGasStationName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +152,14 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
       onAddFuelType(newFuelTypeName.trim());
       setNewFuelTypeName('');
       setShowAddFuelType(false);
+    }
+  };
+
+  const handleAddGasStation = () => {
+    if (newGasStationName.trim()) {
+      onAddGasStation(newGasStationName.trim());
+      setNewGasStationName('');
+      setShowAddGasStation(false);
     }
   };
 
@@ -316,19 +340,34 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>加油站</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>加油站</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddGasStation(true)}
+                        className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>添加</span>
+                      </button>
                     </div>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={formData.station}
                     onChange={(e) => setFormData({ ...formData, station: e.target.value })}
                     className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="中石油、中石化等"
-                  />
+                  >
+                    <option value="">请选择加油站...</option>
+                    {gasStations.map(station => (
+                      <option key={station.id} value={station.name}>
+                        {station.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">位置</label>
@@ -341,6 +380,51 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
                   />
                 </div>
               </div>
+
+              {showAddGasStation && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <input
+                      type="text"
+                      value={newGasStationName}
+                      onChange={(e) => setNewGasStationName(e.target.value)}
+                      placeholder="输入新的加油站名称"
+                      className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddGasStation}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      添加
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddGasStation(false)}
+                      className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      取消
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700">现有加油站:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {gasStations.map(station => (
+                        <div key={station.id} className="flex items-center space-x-2 bg-white px-3 py-1 rounded-lg border border-gray-200">
+                          <span className="text-sm text-gray-700">{station.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteGasStation(station.id)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -373,7 +457,7 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
 
               {showAddFuelType && (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 mb-4">
                     <input
                       type="text"
                       value={newFuelTypeName}
@@ -395,6 +479,23 @@ export function AddFuelRecord({ vehicles, fuelRecords, fuelTypes, onAddRecord, o
                     >
                       取消
                     </button>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700">现有燃料类型:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {fuelTypes.map(type => (
+                        <div key={type.id} className="flex items-center space-x-2 bg-white px-3 py-1 rounded-lg border border-gray-200">
+                          <span className="text-sm text-gray-700">{type.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteFuelType(type.id)}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

@@ -1,16 +1,46 @@
-import React from 'react';
-import { Vehicle, FuelRecord } from '../types';
+import React, { useState } from 'react';
+import { Vehicle, FuelRecord, FuelTypeOption, GasStationOption } from '../types';
 import { calculateStatistics, formatCurrency } from '../utils/calculations';
-import { Fuel, TrendingUp, BarChart, Calendar, MapPin, Image } from 'lucide-react';
+import { Fuel, TrendingUp, BarChart, Calendar, MapPin, Image, Edit2, Trash2, X, Car } from 'lucide-react';
 
 interface DashboardProps {
   vehicles: Vehicle[];
   fuelRecords: FuelRecord[];
   selectedVehicleId: string;
   onVehicleChange: (vehicleId: string) => void;
+  onEditRecord: (id: string, record: Omit<FuelRecord, 'id' | 'createdAt'>) => void;
+  onDeleteRecord: (id: string) => void;
+  fuelTypes: FuelTypeOption[];
+  gasStations: GasStationOption[];
 }
 
-export function Dashboard({ vehicles, fuelRecords, selectedVehicleId, onVehicleChange }: DashboardProps) {
+export function Dashboard({ 
+  vehicles, 
+  fuelRecords, 
+  selectedVehicleId, 
+  onVehicleChange, 
+  onEditRecord, 
+  onDeleteRecord,
+  fuelTypes,
+  gasStations
+}: DashboardProps) {
+  const [editingRecord, setEditingRecord] = useState<FuelRecord | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    vehicleId: '',
+    date: '',
+    odometer: '',
+    fuelAmount: '',
+    cost: '',
+    actualPayment: '',
+    pricePerLiter: '',
+    discountedPricePerLiter: '',
+    station: '',
+    location: '',
+    fuelType: '',
+    notes: '',
+    images: [] as string[],
+  });
+
   const currentVehicle = vehicles.find(v => v.id === selectedVehicleId);
   const vehicleRecords = fuelRecords.filter(record => record.vehicleId === selectedVehicleId);
   const stats = calculateStatistics(vehicleRecords);
@@ -18,6 +48,59 @@ export function Dashboard({ vehicles, fuelRecords, selectedVehicleId, onVehicleC
   const recentRecords = vehicleRecords
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
+
+  const handleEditRecord = (record: FuelRecord) => {
+    setEditingRecord(record);
+    setEditFormData({
+      vehicleId: record.vehicleId,
+      date: record.date,
+      odometer: record.odometer.toString(),
+      fuelAmount: record.fuelAmount.toString(),
+      cost: record.cost.toString(),
+      actualPayment: record.actualPayment.toString(),
+      pricePerLiter: record.pricePerLiter.toString(),
+      discountedPricePerLiter: record.discountedPricePerLiter.toString(),
+      station: record.station,
+      location: record.location,
+      fuelType: record.fuelType,
+      notes: record.notes || '',
+      images: record.images || [],
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingRecord) return;
+
+    const pricePerLiter = editFormData.pricePerLiter 
+      ? parseFloat(editFormData.pricePerLiter)
+      : parseFloat(editFormData.cost) / parseFloat(editFormData.fuelAmount);
+
+    const discountedPricePerLiter = editFormData.actualPayment
+      ? parseFloat(editFormData.actualPayment) / parseFloat(editFormData.fuelAmount)
+      : pricePerLiter;
+
+    onEditRecord(editingRecord.id, {
+      vehicleId: editFormData.vehicleId,
+      date: editFormData.date,
+      odometer: parseInt(editFormData.odometer),
+      fuelAmount: parseFloat(editFormData.fuelAmount),
+      cost: parseFloat(editFormData.cost),
+      actualPayment: parseFloat(editFormData.actualPayment),
+      pricePerLiter,
+      discountedPricePerLiter,
+      station: editFormData.station,
+      location: editFormData.location,
+      fuelType: editFormData.fuelType,
+      notes: editFormData.notes,
+      images: editFormData.images,
+    });
+
+    setEditingRecord(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
+  };
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color }: {
     title: string;
@@ -147,6 +230,7 @@ export function Dashboard({ vehicles, fuelRecords, selectedVehicleId, onVehicleC
                         <span>附件</span>
                       </div>
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -181,6 +265,22 @@ export function Dashboard({ vehicles, fuelRecords, selectedVehicleId, onVehicleC
                           <span className="text-gray-400">无</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditRecord(record)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDeleteRecord(record.id)}
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -188,6 +288,164 @@ export function Dashboard({ vehicles, fuelRecords, selectedVehicleId, onVehicleC
             </div>
           </div>
         </>
+      )}
+
+      {/* Edit Record Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">编辑加油记录</h3>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">车辆</label>
+                    <select
+                      value={editFormData.vehicleId}
+                      onChange={(e) => setEditFormData({ ...editFormData, vehicleId: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      {vehicles.map(vehicle => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.name} ({vehicle.licensePlate})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">日期</label>
+                    <input
+                      type="date"
+                      value={editFormData.date}
+                      onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">里程数 (km)</label>
+                    <input
+                      type="number"
+                      value={editFormData.odometer}
+                      onChange={(e) => setEditFormData({ ...editFormData, odometer: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">加油量 (L)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editFormData.fuelAmount}
+                      onChange={(e) => setEditFormData({ ...editFormData, fuelAmount: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">标准费用 (¥)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editFormData.cost}
+                      onChange={(e) => setEditFormData({ ...editFormData, cost: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">实际付款 (¥)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editFormData.actualPayment}
+                      onChange={(e) => setEditFormData({ ...editFormData, actualPayment: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">加油站</label>
+                    <select
+                      value={editFormData.station}
+                      onChange={(e) => setEditFormData({ ...editFormData, station: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      {gasStations.map(station => (
+                        <option key={station.id} value={station.name}>
+                          {station.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">位置</label>
+                    <input
+                      type="text"
+                      value={editFormData.location}
+                      onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">燃料类型</label>
+                  <select
+                    value={editFormData.fuelType}
+                    onChange={(e) => setEditFormData({ ...editFormData, fuelType: e.target.value })}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    {fuelTypes.map(type => (
+                      <option key={type.id} value={type.name}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">备注</label>
+                  <textarea
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleSaveEdit}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-teal-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all duration-200"
+                  >
+                    保存修改
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

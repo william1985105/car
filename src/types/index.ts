@@ -43,3 +43,9 @@ export interface FuelTypeOption {
   name: string;
   createdAt: string;
 }
+
+export interface GasStationOption {
+  id: string;
+  name: string;
+  createdAt: string;
+}

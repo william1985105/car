@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Vehicle, FuelRecord, FuelTypeOption } from './types';
+import { Vehicle, FuelRecord, FuelTypeOption, GasStationOption } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
@@ -16,6 +16,13 @@ function App() {
     { id: '3', name: '98号汽油', createdAt: new Date().toISOString() },
     { id: '4', name: '0号柴油', createdAt: new Date().toISOString() },
     { id: '5', name: '-10号柴油', createdAt: new Date().toISOString() },
+  ]);
+  const [gasStations, setGasStations] = useLocalStorage<GasStationOption[]>('fuel-tracker-gas-stations', [
+    { id: '1', name: '中石油', createdAt: new Date().toISOString() },
+    { id: '2', name: '中石化', createdAt: new Date().toISOString() },
+    { id: '3', name: '中海油', createdAt: new Date().toISOString() },
+    { id: '4', name: '壳牌', createdAt: new Date().toISOString() },
+    { id: '5', name: '道达尔', createdAt: new Date().toISOString() },
   ]);
   const [password, setPassword] = useLocalStorage<string>('fuel-tracker-password', '');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -85,6 +92,20 @@ function App() {
     setFuelRecords([...fuelRecords, newRecord]);
   };
 
+  const handleEditFuelRecord = (id: string, recordData: Omit<FuelRecord, 'id' | 'createdAt'>) => {
+    setFuelRecords(fuelRecords.map(record => 
+      record.id === id 
+        ? { ...recordData, id, createdAt: record.createdAt }
+        : record
+    ));
+  };
+
+  const handleDeleteFuelRecord = (id: string) => {
+    if (confirm('确定要删除这条加油记录吗？')) {
+      setFuelRecords(fuelRecords.filter(record => record.id !== id));
+    }
+  };
+
   const handleAddFuelType = (name: string) => {
     const newFuelType: FuelTypeOption = {
       id: crypto.randomUUID(),
@@ -92,6 +113,27 @@ function App() {
       createdAt: new Date().toISOString(),
     };
     setFuelTypes([...fuelTypes, newFuelType]);
+  };
+
+  const handleDeleteFuelType = (id: string) => {
+    if (confirm('确定要删除这个燃料类型吗？')) {
+      setFuelTypes(fuelTypes.filter(type => type.id !== id));
+    }
+  };
+
+  const handleAddGasStation = (name: string) => {
+    const newGasStation: GasStationOption = {
+      id: crypto.randomUUID(),
+      name,
+      createdAt: new Date().toISOString(),
+    };
+    setGasStations([...gasStations, newGasStation]);
+  };
+
+  const handleDeleteGasStation = (id: string) => {
+    if (confirm('确定要删除这个加油站吗？')) {
+      setGasStations(gasStations.filter(station => station.id !== id));
+    }
   };
 
   if (!isLoggedIn) {
@@ -107,6 +149,10 @@ function App() {
             fuelRecords={fuelRecords}
             selectedVehicleId={selectedVehicleId}
             onVehicleChange={setSelectedVehicleId}
+            onEditRecord={handleEditFuelRecord}
+            onDeleteRecord={handleDeleteFuelRecord}
+            fuelTypes={fuelTypes}
+            gasStations={gasStations}
           />
         );
       case 'vehicles':
@@ -124,8 +170,12 @@ function App() {
             vehicles={vehicles}
             fuelRecords={fuelRecords}
             fuelTypes={fuelTypes}
+            gasStations={gasStations}
             onAddRecord={handleAddFuelRecord}
             onAddFuelType={handleAddFuelType}
+            onDeleteFuelType={handleDeleteFuelType}
+            onAddGasStation={handleAddGasStation}
+            onDeleteGasStation={handleDeleteGasStation}
           />
         );
       default:
